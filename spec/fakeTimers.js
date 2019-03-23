@@ -11,7 +11,7 @@ function fakeTime() {
 function advanceTime(ms) {
   act(() => {
     currentTime += ms;
-    jest.runTimersToTime(ms);
+    jest.advanceTimersByTime(ms);
   });
 }
 
