@@ -20,7 +20,7 @@ const MyComponent = ({targetTime}) => {
   if (remaining >= 0) {
     return (<div>Seconds remaining: {remaining / 1000}</div>);
   }
-  return (<div>Time's up!</div>);
+  return (<div>Countdown ended!</div>);
 };
 ```
 
