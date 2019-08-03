@@ -6,7 +6,7 @@ target time is reached.
 ## Install dependency
 
 ```bash
-npm install --save git+https://github.com/davidje13/react-hook-countdown.git#semver:^1.0.0
+npm install --save git+https://github.com/davidje13/react-hook-countdown.git#semver:^1.0.1
 ```
 
 ## Usage
