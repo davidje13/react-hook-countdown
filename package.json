@@ -26,8 +26,8 @@
   "homepage": "https://github.com/davidje13/react-hook-countdown#readme",
   "devDependencies": {
     "eslint": "6.x",
-    "eslint-plugin-jest": "22.x",
-    "eslint-plugin-node": "10.x",
+    "eslint-plugin-jest": "23.x",
+    "eslint-plugin-node": "11.x",
     "jest": "25.x",
     "react": "16.x",
     "react-dom": "16.x"
