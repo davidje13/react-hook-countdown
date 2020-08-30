@@ -1,5 +1,5 @@
 {
-  "name": "react-hook-countdown",
+  "name": "react-hook-final-countdown",
   "version": "1.0.1",
   "description": "countdown hook for react functional components",
   "files": [
@@ -10,14 +10,19 @@
   "types": "index.d.ts",
   "scripts": {
     "lint": "eslint --format codeframe --ext mjs,js .",
-    "test": "jest && npm run lint",
+    "test": "jest",
+    "posttest": "npm run lint",
     "test:watch": "jest --watch"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/davidje13/react-hook-countdown.git"
   },
-  "keywords": [],
+  "keywords": [
+    "react",
+    "hook",
+    "countdown"
+  ],
   "author": "David Evans",
   "license": "MIT",
   "bugs": {
@@ -25,10 +30,10 @@
   },
   "homepage": "https://github.com/davidje13/react-hook-countdown#readme",
   "devDependencies": {
-    "eslint": "6.x",
+    "eslint": "7.x",
     "eslint-plugin-jest": "23.x",
     "eslint-plugin-node": "11.x",
-    "jest": "25.x",
+    "jest": "26.x",
     "react": "16.x",
     "react-dom": "16.x"
   },

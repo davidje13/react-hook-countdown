@@ -6,13 +6,13 @@ target time is reached.
 ## Install dependency
 
 ```bash
-npm install --save git+https://github.com/davidje13/react-hook-countdown.git#semver:^1.0.1
+npm install --save react-hook-final-countdown
 ```
 
 ## Usage
 
 ```javascript
-const useCountdown = require('react-hook-countdown');
+const useCountdown = require('react-hook-final-countdown');
 
 const MyComponent = ({targetTime}) => {
   const remaining = useCountdown(targetTime, 1000);
