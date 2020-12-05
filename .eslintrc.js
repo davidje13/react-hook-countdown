@@ -145,7 +145,7 @@ module.exports = {
     'padded-blocks': ['error', 'never'],
     'prefer-arrow-callback': ['error'],
     'prefer-const': ['error', {'destructuring': 'all'}],
-    'prefer-destructuring': ['error'],
+    'prefer-destructuring': ['off'], // Compatibility with old browsers
     'prefer-numeric-literals': ['error'],
     'prefer-promise-reject-errors': ['error'],
     'prefer-rest-params': ['error'],

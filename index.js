@@ -1,8 +1,8 @@
-const { useEffect, useState } = require('react');
+const { useEffect, useState, useCallback } = require('react');
 
 function useRerender() {
-  const state = useState(0);
-  return () => state[1]((frame) => (frame + 1));
+  const setState = useState(0)[1];
+  return useCallback(() => setState((frame) => (frame + 1)), []);
 }
 
 function throttle(delay) {
@@ -16,7 +16,9 @@ function throttle(delay) {
 function setSmallTimeout(fn, delay) {
   const result = {};
 
-  if (delay < 10 && global.requestAnimationFrame) {
+  if (delay <= 0) {
+    fn();
+  } else if (delay < 10 && global.requestAnimationFrame) {
     result.frame = global.requestAnimationFrame(fn);
   } else {
     result.timer = setTimeout(fn, delay);
@@ -43,26 +45,35 @@ function clearSmallTimeout(timeout) {
   }
 }
 
+function useRerenderAtTime(targetTime, getTime = Date.now) {
+  const rerender = useRerender();
+  useEffect(() => {
+    if (targetTime === null) {
+      return undefined;
+    }
+    const timeout = setSmallTimeout(rerender, throttle(targetTime - getTime()));
+    return () => clearSmallTimeout(timeout);
+  }, [rerender, targetTime, getTime]);
+}
+
 function quantise(remaining, interval) {
   return (Math.ceil(remaining / interval) - 1) * interval;
 }
 
+function getNextUpdateTime(now, targetTime, interval) {
+  if (now >= targetTime) {
+    return null;
+  }
+  let delay = (targetTime - now) % interval;
+  if (delay === 0) {
+    delay = interval;
+  }
+  return now + delay;
+}
+
 function useCountdown(targetTime, interval = 50, getTime = Date.now) {
   const now = getTime();
-  const rerender = useRerender();
-
-  useEffect(() => {
-    if (now >= targetTime) {
-      return undefined;
-    }
-    let delay = (targetTime - now) % interval;
-    if (delay === 0) {
-      delay = interval;
-    }
-    const timeout = setSmallTimeout(rerender, throttle(delay));
-    return () => clearSmallTimeout(timeout);
-  });
-
+  useRerenderAtTime(getNextUpdateTime(now, targetTime, interval), getTime);
   return Math.max(quantise(targetTime - now, interval), -1);
 }
 

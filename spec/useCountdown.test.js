@@ -39,6 +39,7 @@ describe('useCountdown', () => {
 
   afterEach(() => {
     jest.clearAllTimers();
+    jest.restoreAllMocks();
   });
 
   it('invokes periodic re-renders', () => {
@@ -129,5 +130,19 @@ describe('useCountdown', () => {
 
     advanceTime(100);
     expect(getDisplayedText()).toEqual('Renders: 2, Remaining: -1');
+  });
+
+  it('does not reset timers if nothing has changed', () => {
+    jest.spyOn(window, 'setTimeout');
+
+    renderCountdown(startTime + 20000, 10000);
+    expect(window.setTimeout).toHaveBeenCalledTimes(1);
+
+    advanceTime(5000);
+    renderCountdown(startTime + 20000, 10000);
+    expect(window.setTimeout).toHaveBeenCalledTimes(1);
+
+    renderCountdown(startTime + 20001, 10000);
+    expect(window.setTimeout).toHaveBeenCalledTimes(2);
   });
 });
