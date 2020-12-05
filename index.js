@@ -13,19 +13,17 @@ function throttle(delay) {
   return delay;
 }
 
-function setSmallTimeout(fn, delay) {
+function setSmallTimeout(fn, focusFn, delay) {
   const result = {};
 
-  if (delay <= 0) {
-    fn();
-  } else if (delay < 10 && global.requestAnimationFrame) {
+  if (delay < 10 && global.requestAnimationFrame) {
     result.frame = global.requestAnimationFrame(fn);
   } else {
     result.timer = setTimeout(fn, delay);
     if (global.window) {
       // Timers can be inaccurate when in the background
       // So check state of the world when we regain focus
-      result.focus = fn;
+      result.focus = focusFn;
       global.window.addEventListener('focus', result.focus);
     }
   }
@@ -34,6 +32,9 @@ function setSmallTimeout(fn, delay) {
 }
 
 function clearSmallTimeout(timeout) {
+  if (!timeout) {
+    return;
+  }
   if (timeout.focus) {
     global.window.removeEventListener('focus', timeout.focus);
   }
@@ -51,7 +52,22 @@ function useRerenderAtTime(targetTime, getTime = Date.now) {
     if (targetTime === null) {
       return undefined;
     }
-    const timeout = setSmallTimeout(rerender, throttle(targetTime - getTime()));
+    let timeout = null;
+    const checkOnFocus = () => {
+      clearSmallTimeout(timeout);
+      const now = getTime();
+      if (now >= targetTime) {
+        timeout = null;
+        rerender();
+      } else {
+        timeout = setSmallTimeout(
+          rerender,
+          checkOnFocus,
+          throttle(targetTime - now)
+        );
+      }
+    };
+    checkOnFocus();
     return () => clearSmallTimeout(timeout);
   }, [rerender, targetTime, getTime]);
 }

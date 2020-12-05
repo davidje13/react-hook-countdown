@@ -9,6 +9,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  ReactDOM.unmountComponentAtNode(root);
   document.body.removeChild(root);
 });
 

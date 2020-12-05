@@ -18,8 +18,8 @@ const Component = ({target, interval, getTime}) => {
   );
 };
 
-function renderCountdown(target, interval) {
-  render(React.createElement(Component, { target, interval }));
+function renderCountdown(target, interval, getTime) {
+  render(React.createElement(Component, { target, interval, getTime }));
 }
 
 function getDisplayedText() {
@@ -30,20 +30,38 @@ function advanceTime(ms) {
   act(() => jest.advanceTimersByTime(ms));
 }
 
-describe('useCountdown', () => {
-  let startTime = 0;
-
-  beforeEach(() => {
-    startTime = Date.now();
+function focusWindow() {
+  act(() => {
+    window.dispatchEvent(new FocusEvent('focus'));
   });
+}
 
-  afterEach(() => {
+function customGetNow() {
+  let timeSlippage = 0;
+  const fn = () => (Date.now() + timeSlippage);
+  fn.slip = (time) => {
+    timeSlippage += time;
+  };
+  return fn;
+}
+
+function countSetTimeoutCalls() {
+  // Excludes internal calls from react-test-renderer
+  // See https://stackoverflow.com/a/65162446/1180785
+  return setTimeout.mock.calls.filter(([fn, t]) => (
+    t !== 0 ||
+    !String(fn).includes('_flushCallback')
+  ));
+}
+
+describe('useCountdown', () => {
+  beforeEach(() => {
     jest.clearAllTimers();
     jest.restoreAllMocks();
   });
 
   it('invokes periodic re-renders', () => {
-    renderCountdown(startTime + 315, 100);
+    renderCountdown(Date.now() + 315, 100);
     expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 300');
 
     advanceTime(20);
@@ -60,7 +78,7 @@ describe('useCountdown', () => {
   });
 
   it('updates exactly at interval boundry', () => {
-    renderCountdown(startTime + 374, 100);
+    renderCountdown(Date.now() + 374, 100);
     expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 300');
 
     advanceTime(73);
@@ -71,7 +89,7 @@ describe('useCountdown', () => {
   });
 
   it('stops updating once countdown expires', () => {
-    renderCountdown(startTime - 1000, 100);
+    renderCountdown(Date.now() - 1000, 100);
     expect(getDisplayedText()).toEqual('Renders: 1, Remaining: -1');
 
     advanceTime(150);
@@ -79,7 +97,7 @@ describe('useCountdown', () => {
   });
 
   it('uses requestAnimationFrame for very short durations', () => {
-    renderCountdown(startTime + 305, 100);
+    renderCountdown(Date.now() + 305, 100);
     expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 300');
 
     // Not updated because mock requestAnimationFrame runs every 16 milliseconds
@@ -95,6 +113,7 @@ describe('useCountdown', () => {
   });
 
   it('updates immediately if target changes', () => {
+    const startTime = Date.now();
     renderCountdown(startTime + 1005, 100);
     expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 1000');
 
@@ -103,6 +122,7 @@ describe('useCountdown', () => {
   });
 
   it('updates immediately if interval changes', () => {
+    const startTime = Date.now();
     renderCountdown(startTime + 805, 500);
     expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 500');
 
@@ -111,6 +131,7 @@ describe('useCountdown', () => {
   });
 
   it('restarts countdown if target changes', () => {
+    const startTime = Date.now();
     renderCountdown(startTime - 1000, 100);
 
     advanceTime(250);
@@ -124,6 +145,7 @@ describe('useCountdown', () => {
   });
 
   it('stops countdown if new target is already reached', () => {
+    const startTime = Date.now();
     renderCountdown(startTime + 1000, 100);
     renderCountdown(startTime - 1000, 100);
     expect(getDisplayedText()).toEqual('Renders: 2, Remaining: -1');
@@ -133,16 +155,48 @@ describe('useCountdown', () => {
   });
 
   it('does not reset timers if nothing has changed', () => {
+    const startTime = Date.now();
     jest.spyOn(window, 'setTimeout');
 
     renderCountdown(startTime + 20000, 10000);
-    expect(window.setTimeout).toHaveBeenCalledTimes(1);
+    expect(countSetTimeoutCalls()).toHaveLength(1);
 
     advanceTime(5000);
     renderCountdown(startTime + 20000, 10000);
-    expect(window.setTimeout).toHaveBeenCalledTimes(1);
+    expect(countSetTimeoutCalls()).toHaveLength(1);
 
     renderCountdown(startTime + 20001, 10000);
-    expect(window.setTimeout).toHaveBeenCalledTimes(2);
+    expect(countSetTimeoutCalls()).toHaveLength(2);
+  });
+
+  it('checks the time when the window regains focus', () => {
+    const getNow = customGetNow();
+
+    renderCountdown(Date.now() + 315, 100, getNow);
+
+    getNow.slip(200);
+    expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 300');
+
+    focusWindow();
+    expect(getDisplayedText()).toEqual('Renders: 2, Remaining: 100');
+  });
+
+  it('does not rerender unnecessarily when the window gains focus', () => {
+    const getNow = customGetNow();
+    jest.spyOn(window, 'setTimeout');
+
+    renderCountdown(Date.now() + 350, 100, getNow);
+    expect(countSetTimeoutCalls()).toHaveLength(1);
+
+    getNow.slip(25);
+    focusWindow();
+    expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 300');
+    expect(countSetTimeoutCalls()).toHaveLength(2);
+
+    advanceTime(24);
+    expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 300');
+
+    advanceTime(1);
+    expect(getDisplayedText()).toEqual('Renders: 2, Remaining: 200');
   });
 });
