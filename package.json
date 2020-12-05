@@ -1,6 +1,6 @@
 {
   "name": "react-hook-final-countdown",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "countdown hook for react functional components",
   "files": [
     "index.js",
