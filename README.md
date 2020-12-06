@@ -116,7 +116,7 @@ not visible in many browsers).
 ```javascript
 const useCountdown = require('react-hook-final-countdown');
 
-const Y3K = Date.UTC(3000, 0, 1, 0, 0, 0, 0);
+const Y3K = Date.UTC(3000);
 
 const MyComponent = () => {
   const remaining = useCountdown(Y3K, 1000);

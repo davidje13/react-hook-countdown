@@ -156,6 +156,15 @@ describe('useCountdown', () => {
     expect(countSetTimeoutCalls()).toHaveLength(2);
   });
 
+  it('rejects invalid intervals', () => {
+    jest.spyOn(console, 'error').mockImplementation(() => null);
+    expect(() => renderCountdown(Date.now() + 315, -1))
+      .toThrow('invalid interval');
+
+    expect(() => renderCountdown(Date.now() + 315, undefined))
+      .toThrow('invalid interval');
+  });
+
   describe('when the window regains focus', () => {
     it('checks if the time has slipped', () => {
       const getNow = customGetNow();

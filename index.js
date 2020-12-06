@@ -1,4 +1,4 @@
-const { useEffect, useState, useCallback } = require('react');
+const { useEffect, useState } = require('react');
 
 function throttle(delay) {
   if (global.document && global.document.hidden) {
@@ -52,10 +52,10 @@ function useCallbackAtTime(fn, targetTime, getTime) {
       const now = getTime();
       if (now >= targetTime) {
         timeout = null;
-        fn();
+        fn(now);
       } else {
         timeout = setSmallTimeout(
-          fn,
+          () => fn(getTime()),
           checkOnFocus,
           throttle(targetTime - now)
         );
@@ -84,16 +84,23 @@ function getNextUpdateTime(now, targetTime, interval) {
   return now + delay;
 }
 
-const inc = (frame) => (frame + 1);
+function useCountdown(targetTime, interval, getTime) {
+  if (!interval || interval < 0) {
+    throw new Error('invalid interval');
+  }
+  const getTimeFn = getTime || Date.now;
 
-function useCountdown(targetTime, interval = 50, getTime = Date.now) {
-  const now = getTime();
-  const setState = useState(0)[1];
-  const rerender = useCallback(() => setState(inc), []);
+  /* This is not pure; technically should be:
+   *  const timeState = useState(getTimeFn);
+   *  const now = timeState[0];
+   * but that causes temporary incorrect output when targetTime changes */
+  const now = getTimeFn();
+  const timeState = useState(now);
+
   useCallbackAtTime(
-    rerender,
+    timeState[1],
     getNextUpdateTime(now, targetTime, interval),
-    getTime
+    getTimeFn
   );
   if (now >= targetTime) {
     return -1;
