@@ -43,8 +43,7 @@ Counts down to the given target time.
   unix epoch).
 - `interval`: number of milliseconds between refreshes; this will
   control how often the component is re-rendered, and will be used to
-  quantise the returned remaining milliseconds. Defaults to 50
-  milliseconds.
+  quantise the returned remaining milliseconds.
 - `getTimeFunction`: a function which takes no arguments and returns
   the current time in milliseconds since the unix epoch. Defaults to
   `Date.now`.
@@ -69,6 +68,23 @@ For example, for an interval of 800ms, returned values may be:
 
 Positive returned values will always be a multiple of the requested
 interval (to within numeric precision).
+
+### useTimeInterval(interval[, anchorTime[, getTimeFunction]])
+
+Provides an infinite timer, updating every `interval` milliseconds.
+
+- `interval`: number of milliseconds between refreshes; this will
+  control how often the component is re-rendered, and will be used to
+  quantise the returned time.
+- `anchorTime`: a time which can be in the future or the past; this
+  will control the "phase" of the clock. For example, setting
+  `interval` to 1000 and `anchorTime` to 500 will cause an update
+  every second on the half-second boundary. Defaults to 0.
+- `getTimeFunction`: a function which takes no arguments and returns
+  the current time in milliseconds since the unix epoch. Defaults to
+  `Date.now`.
+
+Returns the current timestamp, quantised using `interval`.
 
 ### useIsAfter(targetTime[, getTimeFunction])
 
@@ -155,5 +171,17 @@ const MyDelayedButton = ({onClick}) => {
   };
 
   return (<button disabled={!enabled} onClick={clickHandler}>Continue</button>);
+};
+```
+
+### A clock
+
+```javascript
+const {useTimeInterval} = require('react-hook-final-countdown');
+
+const MyClock = () => {
+  const time = useTimeInterval(1000);
+
+  return (<span>{new Date(time).toString()}</span>);
 };
 ```

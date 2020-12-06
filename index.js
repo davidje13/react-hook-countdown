@@ -1,5 +1,7 @@
 const { useEffect, useState } = require('react');
 
+const inf = Number.POSITIVE_INFINITY;
+
 function throttle(delay) {
   if (global.document && global.document.hidden) {
     // Page is not visible, so throttle the callback to save user's CPU
@@ -41,83 +43,100 @@ function clearSmallTimeout(timeout) {
   }
 }
 
-function useCallbackAtTime(fn, targetTime, getTime) {
+function useCallbackAtTime(fn, target, getTime) {
   useEffect(() => {
-    if (targetTime === null || Number.isNaN(targetTime)) {
+    if (target === null || Number.isNaN(target)) {
       return undefined;
     }
     let timeout = null;
     const checkOnFocus = () => {
       clearSmallTimeout(timeout);
       const now = getTime();
-      if (now >= targetTime) {
+      if (now >= target) {
         timeout = null;
         fn(now);
       } else {
         timeout = setSmallTimeout(
           () => fn(getTime()),
           checkOnFocus,
-          throttle(targetTime - now)
+          throttle(target - now)
         );
       }
     };
     checkOnFocus();
     return () => clearSmallTimeout(timeout);
-  }, [fn, targetTime, getTime]);
+  }, [fn, target, getTime]);
 }
 
-function quantise(remaining, interval) {
-  if (remaining <= interval) {
-    return 0;
-  }
-  return (Math.ceil(remaining / interval) - 1) * interval;
+function quantise(v, step) {
+  return Math.floor(v / step) * step;
 }
 
-function getNextUpdateTime(now, targetTime, interval) {
-  if (now >= targetTime) {
-    return null;
+function pickStep(now, anchorTime, interval) {
+  if (!Number.isFinite(anchorTime)) {
+    return { now: -inf, next: null };
   }
-  let delay = (targetTime - now) % interval;
-  if (delay === 0) {
-    delay = interval;
+  if (interval === inf) {
+    if (now < anchorTime) {
+      return { now: -inf, next: anchorTime };
+    }
+    return { now: anchorTime, next: null };
   }
-  return now + delay;
+  const quantisedNow = quantise(now - anchorTime, interval) + anchorTime;
+  return { now: quantisedNow, next: quantisedNow + interval };
 }
 
-function useCountdown(targetTime, interval, getTime) {
-  if (!interval || interval < 0) {
+function useTimeInterval(interval, anchor, getTime, stopAtAnchor) {
+  const anchorTime = (anchor === undefined) ? 0 : anchor;
+  const getTimeFn = getTime || Date.now;
+
+  if (!interval || interval < 0 || Number.isNaN(interval)) {
     throw new Error('invalid interval');
   }
-  const getTimeFn = getTime || Date.now;
+  if (Number.isNaN(anchorTime)) {
+    throw new Error('invalid target time');
+  }
 
   /* This is not pure; technically should be:
    *  const timeState = useState(getTimeFn);
    *  const now = timeState[0];
-   * but that causes temporary incorrect output when targetTime changes */
+   * but that causes temporary incorrect output when target changes */
   const now = getTimeFn();
-  const timeState = useState(now);
+  const setTime = useState(now)[1];
 
-  useCallbackAtTime(
-    timeState[1],
-    getNextUpdateTime(now, targetTime, interval),
-    getTimeFn
-  );
-  if (now >= targetTime) {
-    return -1;
+  const step = pickStep(now, anchorTime, interval);
+  const next = (stopAtAnchor && step.next > anchorTime) ? null : step.next;
+  useCallbackAtTime(setTime, next, getTimeFn);
+  return step.now;
+}
+
+function useCountdown(target, interval, getTime) {
+  if (typeof target !== 'number') {
+    throw new Error('invalid target time');
   }
-  return quantise(targetTime - now, interval);
+  const now = useTimeInterval(interval, target, getTime, true);
+  return (
+    (now >= target) ? -1 :
+      (interval === inf) ? 0 :
+        (target - now - interval)
+  );
 }
 
-function useIsAfter(targetTime, getTime) {
-  return useCountdown(targetTime, Number.POSITIVE_INFINITY, getTime) < 0;
+function useIsAfter(target, getTime) {
+  if (typeof target !== 'number') {
+    throw new Error('invalid target time');
+  }
+  const now = useTimeInterval(inf, target, getTime, true);
+  return (now >= target);
 }
 
-function useIsBefore(targetTime, getTime) {
-  return !useIsAfter(targetTime, getTime);
+function useIsBefore(target, getTime) {
+  return !useIsAfter(target, getTime);
 }
 
 Object.defineProperty(exports, '__esModule', { value: true });
 exports.default = useCountdown;
+exports.useTimeInterval = useTimeInterval;
 exports.useIsAfter = useIsAfter;
 exports.useIsBefore = useIsBefore;
 

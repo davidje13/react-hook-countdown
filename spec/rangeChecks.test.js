@@ -60,6 +60,15 @@ describe('useIsAfter', () => {
     advanceTime(100000);
     expect(getDisplayedText()).toEqual('Renders: 1, State: true');
   });
+
+  it('rejects invalid target time', () => {
+    jest.spyOn(console, 'error').mockImplementation(() => null);
+    expect(() => renderIsAfter(undefined))
+      .toThrow('invalid target time');
+
+    expect(() => renderIsAfter(Number.NaN))
+      .toThrow('invalid target time');
+  });
 });
 
 describe('useIsBefore', () => {
@@ -83,5 +92,14 @@ describe('useIsBefore', () => {
 
     advanceTime(100000);
     expect(getDisplayedText()).toEqual('Renders: 1, State: false');
+  });
+
+  it('rejects invalid target time', () => {
+    jest.spyOn(console, 'error').mockImplementation(() => null);
+    expect(() => renderIsBefore(undefined))
+      .toThrow('invalid target time');
+
+    expect(() => renderIsBefore(Number.NaN))
+      .toThrow('invalid target time');
   });
 });
