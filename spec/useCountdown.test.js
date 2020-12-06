@@ -1,7 +1,12 @@
 const React = require('react');
-const {act} = require('react-dom/test-utils');
-const useCountdown = require('../index');
 const {render, querySelector} = require('./render');
+const {
+  advanceTime,
+  focusWindow,
+  customGetNow,
+  countSetTimeoutCalls,
+} = require('./helpers');
+const useCountdown = require('../index');
 
 jest.useFakeTimers('modern');
 
@@ -26,40 +31,7 @@ function getDisplayedText() {
   return querySelector('div').textContent;
 }
 
-function advanceTime(ms) {
-  act(() => jest.advanceTimersByTime(ms));
-}
-
-function focusWindow() {
-  act(() => {
-    window.dispatchEvent(new FocusEvent('focus'));
-  });
-}
-
-function customGetNow() {
-  let timeSlippage = 0;
-  const fn = () => (Date.now() + timeSlippage);
-  fn.slip = (time) => {
-    timeSlippage += time;
-  };
-  return fn;
-}
-
-function countSetTimeoutCalls() {
-  // Excludes internal calls from react-test-renderer
-  // See https://stackoverflow.com/a/65162446/1180785
-  return setTimeout.mock.calls.filter(([fn, t]) => (
-    t !== 0 ||
-    !String(fn).includes('_flushCallback')
-  ));
-}
-
 describe('useCountdown', () => {
-  beforeEach(() => {
-    jest.clearAllTimers();
-    jest.restoreAllMocks();
-  });
-
   it('invokes periodic re-renders', () => {
     renderCountdown(Date.now() + 315, 100);
     expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 300');
@@ -79,13 +51,29 @@ describe('useCountdown', () => {
 
   it('updates exactly at interval boundry', () => {
     renderCountdown(Date.now() + 374, 100);
-    expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 300');
 
     advanceTime(73);
     expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 300');
-
     advanceTime(1);
     expect(getDisplayedText()).toEqual('Renders: 2, Remaining: 200');
+
+    advanceTime(199);
+    expect(getDisplayedText()).toEqual('Renders: 3, Remaining: 100');
+    advanceTime(1);
+    expect(getDisplayedText()).toEqual('Renders: 4, Remaining: 0');
+
+    advanceTime(99);
+    expect(getDisplayedText()).toEqual('Renders: 4, Remaining: 0');
+    advanceTime(1);
+    expect(getDisplayedText()).toEqual('Renders: 5, Remaining: -1');
+  });
+
+  it('renders initially exactly at interval boundry', () => {
+    renderCountdown(Date.now() + 1, 100);
+    expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 0');
+
+    renderCountdown(Date.now(), 100);
+    expect(getDisplayedText()).toEqual('Renders: 2, Remaining: -1');
   });
 
   it('stops updating once countdown expires', () => {
@@ -156,7 +144,6 @@ describe('useCountdown', () => {
 
   it('does not reset timers if nothing has changed', () => {
     const startTime = Date.now();
-    jest.spyOn(window, 'setTimeout');
 
     renderCountdown(startTime + 20000, 10000);
     expect(countSetTimeoutCalls()).toHaveLength(1);
@@ -169,34 +156,78 @@ describe('useCountdown', () => {
     expect(countSetTimeoutCalls()).toHaveLength(2);
   });
 
-  it('checks the time when the window regains focus', () => {
-    const getNow = customGetNow();
+  describe('when the window regains focus', () => {
+    it('checks if the time has slipped', () => {
+      const getNow = customGetNow();
 
-    renderCountdown(Date.now() + 315, 100, getNow);
+      renderCountdown(Date.now() + 315, 100, getNow);
 
-    getNow.slip(200);
-    expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 300');
+      getNow.slip(200);
+      expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 300');
 
-    focusWindow();
-    expect(getDisplayedText()).toEqual('Renders: 2, Remaining: 100');
+      focusWindow();
+      expect(getDisplayedText()).toEqual('Renders: 2, Remaining: 100');
+    });
+
+    it('does not rerender if the countdown has not changed', () => {
+      const getNow = customGetNow();
+
+      renderCountdown(Date.now() + 350, 100, getNow);
+      expect(countSetTimeoutCalls()).toHaveLength(1);
+
+      getNow.slip(25);
+      focusWindow();
+      expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 300');
+      expect(countSetTimeoutCalls()).toHaveLength(2);
+
+      advanceTime(24);
+      expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 300');
+
+      advanceTime(1);
+      expect(getDisplayedText()).toEqual('Renders: 2, Remaining: 200');
+    });
   });
 
-  it('does not rerender unnecessarily when the window gains focus', () => {
-    const getNow = customGetNow();
-    jest.spyOn(window, 'setTimeout');
+  describe('infinite interval', () => {
+    it('returns 0 until the target time is reached', () => {
+      renderCountdown(Date.now() + 315, Number.POSITIVE_INFINITY);
+      expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 0');
 
-    renderCountdown(Date.now() + 350, 100, getNow);
-    expect(countSetTimeoutCalls()).toHaveLength(1);
+      advanceTime(314);
+      expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 0');
 
-    getNow.slip(25);
-    focusWindow();
-    expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 300');
-    expect(countSetTimeoutCalls()).toHaveLength(2);
+      advanceTime(1);
+      expect(getDisplayedText()).toEqual('Renders: 2, Remaining: -1');
+    });
+  });
 
-    advanceTime(24);
-    expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 300');
+  describe('infinite target time', () => {
+    it('returns Infinity for future time and does not update', () => {
+      renderCountdown(Number.POSITIVE_INFINITY, 100);
+      expect(getDisplayedText()).toEqual('Renders: 1, Remaining: Infinity');
 
-    advanceTime(1);
-    expect(getDisplayedText()).toEqual('Renders: 2, Remaining: 200');
+      advanceTime(1000);
+      expect(getDisplayedText()).toEqual('Renders: 1, Remaining: Infinity');
+      expect(countSetTimeoutCalls()).toHaveLength(0);
+    });
+
+    it('returns 0 for future if the interval is also infinite', () => {
+      renderCountdown(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
+      expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 0');
+    });
+
+    it('returns -1 for past time and does not update', () => {
+      renderCountdown(Number.NEGATIVE_INFINITY, 100);
+      expect(getDisplayedText()).toEqual('Renders: 1, Remaining: -1');
+
+      advanceTime(1000);
+      expect(getDisplayedText()).toEqual('Renders: 1, Remaining: -1');
+      expect(countSetTimeoutCalls()).toHaveLength(0);
+    });
+
+    it('returns -1 for past if the interval is also infinite', () => {
+      renderCountdown(Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY);
+      expect(getDisplayedText()).toEqual('Renders: 1, Remaining: -1');
+    });
   });
 });

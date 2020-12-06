@@ -1,10 +1,5 @@
 const { useEffect, useState, useCallback } = require('react');
 
-function useRerender() {
-  const setState = useState(0)[1];
-  return useCallback(() => setState((frame) => (frame + 1)), []);
-}
-
 function throttle(delay) {
   if (global.document && global.document.hidden) {
     // Page is not visible, so throttle the callback to save user's CPU
@@ -46,10 +41,9 @@ function clearSmallTimeout(timeout) {
   }
 }
 
-function useRerenderAtTime(targetTime, getTime = Date.now) {
-  const rerender = useRerender();
+function useCallbackAtTime(fn, targetTime, getTime) {
   useEffect(() => {
-    if (targetTime === null) {
+    if (targetTime === null || Number.isNaN(targetTime)) {
       return undefined;
     }
     let timeout = null;
@@ -58,10 +52,10 @@ function useRerenderAtTime(targetTime, getTime = Date.now) {
       const now = getTime();
       if (now >= targetTime) {
         timeout = null;
-        rerender();
+        fn();
       } else {
         timeout = setSmallTimeout(
-          rerender,
+          fn,
           checkOnFocus,
           throttle(targetTime - now)
         );
@@ -69,10 +63,13 @@ function useRerenderAtTime(targetTime, getTime = Date.now) {
     };
     checkOnFocus();
     return () => clearSmallTimeout(timeout);
-  }, [rerender, targetTime, getTime]);
+  }, [fn, targetTime, getTime]);
 }
 
 function quantise(remaining, interval) {
+  if (remaining <= interval) {
+    return 0;
+  }
   return (Math.ceil(remaining / interval) - 1) * interval;
 }
 
@@ -87,14 +84,35 @@ function getNextUpdateTime(now, targetTime, interval) {
   return now + delay;
 }
 
+const inc = (frame) => (frame + 1);
+
 function useCountdown(targetTime, interval = 50, getTime = Date.now) {
   const now = getTime();
-  useRerenderAtTime(getNextUpdateTime(now, targetTime, interval), getTime);
-  return Math.max(quantise(targetTime - now, interval), -1);
+  const setState = useState(0)[1];
+  const rerender = useCallback(() => setState(inc), []);
+  useCallbackAtTime(
+    rerender,
+    getNextUpdateTime(now, targetTime, interval),
+    getTime
+  );
+  if (now >= targetTime) {
+    return -1;
+  }
+  return quantise(targetTime - now, interval);
+}
+
+function useIsAfter(targetTime, getTime) {
+  return useCountdown(targetTime, Number.POSITIVE_INFINITY, getTime) < 0;
+}
+
+function useIsBefore(targetTime, getTime) {
+  return !useIsAfter(targetTime, getTime);
 }
 
 Object.defineProperty(exports, '__esModule', { value: true });
 exports.default = useCountdown;
+exports.useIsAfter = useIsAfter;
+exports.useIsBefore = useIsBefore;
 
 module.exports = Object.assign(exports.default, exports);
 exports.default.default = module.exports;
