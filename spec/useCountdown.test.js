@@ -8,7 +8,7 @@ const {
 } = require('./helpers');
 const useCountdown = require('../index');
 
-jest.useFakeTimers('modern');
+jest.useFakeTimers();
 
 const Component = ({target, interval, getTime}) => {
   const remaining = useCountdown(target, interval, getTime);
@@ -57,7 +57,12 @@ describe('useCountdown', () => {
     advanceTime(1);
     expect(getDisplayedText()).toEqual('Renders: 2, Remaining: 200');
 
-    advanceTime(199);
+    /* Advance in 2 stages like it would in browser, so that we don't end up
+     * throttled by requestAnimationFrame later. */
+    advanceTime(100);
+    expect(getDisplayedText()).toEqual('Renders: 3, Remaining: 100');
+
+    advanceTime(99);
     expect(getDisplayedText()).toEqual('Renders: 3, Remaining: 100');
     advanceTime(1);
     expect(getDisplayedText()).toEqual('Renders: 4, Remaining: 0');
@@ -66,6 +71,14 @@ describe('useCountdown', () => {
     expect(getDisplayedText()).toEqual('Renders: 4, Remaining: 0');
     advanceTime(1);
     expect(getDisplayedText()).toEqual('Renders: 5, Remaining: -1');
+  });
+
+  it('skips intermediate renders if time jumps', () => {
+    renderCountdown(Date.now() + 400, 100);
+
+    expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 300');
+    advanceTime(300);
+    expect(getDisplayedText()).toEqual('Renders: 2, Remaining: 0');
   });
 
   it('renders initially exactly at interval boundry', () => {

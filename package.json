@@ -9,10 +9,7 @@
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
-    "lint": "eslint --format codeframe --ext mjs,js .",
-    "test": "jest",
-    "posttest": "npm run lint",
-    "test:watch": "jest --watch"
+    "test": "jest && eslint --ext mjs,js ."
   },
   "repository": {
     "type": "git",
@@ -30,12 +27,13 @@
   },
   "homepage": "https://github.com/davidje13/react-hook-countdown#readme",
   "devDependencies": {
-    "eslint": "7.x",
-    "eslint-plugin-jest": "24.x",
+    "eslint": "8.x",
+    "eslint-plugin-jest": "26.x",
     "eslint-plugin-node": "11.x",
-    "jest": "26.x",
-    "react": "17.x",
-    "react-dom": "17.x"
+    "jest": "28.x",
+    "jest-environment-jsdom": "28.x",
+    "react": "18.x",
+    "react-dom": "18.x"
   },
   "peerDependencies": {
     "react": ">=16.8.0"

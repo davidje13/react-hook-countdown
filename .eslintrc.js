@@ -181,7 +181,7 @@ module.exports = {
   overrides: [{
     files: ['**/*.test.*'],
     rules: {
-      'max-statements': ['error', 14],
+      'max-statements': ['error', 15],
     },
   }],
 };

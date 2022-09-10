@@ -3,7 +3,7 @@ const {render, querySelector} = require('./render');
 const { advanceTime, countSetTimeoutCalls } = require('./helpers');
 const {useTimeInterval} = require('../index');
 
-jest.useFakeTimers('modern');
+jest.useFakeTimers();
 
 const Component = ({interval, anchor, getTime}) => {
   const remaining = useTimeInterval(interval, anchor, getTime);

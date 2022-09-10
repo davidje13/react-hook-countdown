@@ -1,0 +1,4 @@
+node:18:
+  image: node:18
+  script:
+    - npm install-test
