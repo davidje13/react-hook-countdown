@@ -3,8 +3,6 @@ const { render, querySelector } = require('./render');
 const { advanceTime, focusWindow, customGetNow } = require('./helpers');
 const useCountdown = require('../index');
 
-jest.useFakeTimers();
-
 const Component = ({ target, interval, getTime }) => {
   const remaining = useCountdown(target, interval, getTime);
 

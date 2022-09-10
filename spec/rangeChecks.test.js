@@ -3,8 +3,6 @@ const { render, querySelector } = require('./render');
 const { advanceTime } = require('./helpers');
 const { useIsAfter, useIsBefore } = require('../index');
 
-jest.useFakeTimers();
-
 const Component = ({ useHook, target, getTime }) => {
   const after = useHook(target, getTime);
 

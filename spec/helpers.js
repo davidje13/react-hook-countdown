@@ -1,5 +1,7 @@
 const { act } = require('react-dom/test-utils');
 
+jest.useFakeTimers();
+
 beforeEach(() => {
   jest.clearAllTimers();
   jest.restoreAllMocks();
