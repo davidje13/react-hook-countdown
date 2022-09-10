@@ -1,8 +1,6 @@
 const ReactDOM = require('react-dom/client');
-const {act} = require('react-dom/test-utils');
+const { act } = require('react-dom/test-utils');
 
-// Target environment is browser, but we run in JSDOM here in Node 14+
-/* eslint-disable-next-line node/no-unsupported-features/es-builtins */
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 let root = null;

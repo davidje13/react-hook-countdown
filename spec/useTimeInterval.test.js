@@ -1,11 +1,11 @@
 const React = require('react');
-const {render, querySelector} = require('./render');
-const { advanceTime, countSetTimeoutCalls } = require('./helpers');
-const {useTimeInterval} = require('../index');
+const { render, querySelector } = require('./render');
+const { advanceTime } = require('./helpers');
+const { useTimeInterval } = require('../index');
 
 jest.useFakeTimers();
 
-const Component = ({interval, anchor, getTime}) => {
+const Component = ({ interval, anchor, getTime }) => {
   const remaining = useTimeInterval(interval, anchor, getTime);
 
   const renderCount = React.useRef(0);
@@ -14,7 +14,7 @@ const Component = ({interval, anchor, getTime}) => {
   return React.createElement(
     'div',
     {},
-    'Renders: ' + renderCount.current + ', Time: ' + remaining
+    `Renders: ${renderCount.current}, Time: ${remaining}`
   );
 };
 
@@ -119,7 +119,7 @@ describe('useTimeInterval', () => {
 
       advanceTime(4000);
       expect(getDisplayedText()).toEqual(`Renders: 2, Time: ${begin + 2000}`);
-      expect(countSetTimeoutCalls()).toHaveLength(1);
+      expect(setTimeout.mock.calls).toHaveLength(1);
     });
 
     it('does not update past the target time when interval is infinite', () => {
@@ -128,7 +128,7 @@ describe('useTimeInterval', () => {
       const begin = Date.now();
       renderTimeInterval(Number.POSITIVE_INFINITY, begin - 2000);
       expect(getDisplayedText()).toEqual(`Renders: 1, Time: ${begin - 2000}`);
-      expect(countSetTimeoutCalls()).toHaveLength(0);
+      expect(setTimeout.mock.calls).toHaveLength(0);
     });
 
     it('does not update when target time is +infinity', () => {
@@ -136,7 +136,7 @@ describe('useTimeInterval', () => {
       advanceTime(4000);
 
       expect(getDisplayedText()).toEqual('Renders: 1, Time: -Infinity');
-      expect(countSetTimeoutCalls()).toHaveLength(0);
+      expect(setTimeout.mock.calls).toHaveLength(0);
     });
 
     it('does not update when target time is -infinity', () => {
@@ -144,7 +144,7 @@ describe('useTimeInterval', () => {
       advanceTime(4000);
 
       expect(getDisplayedText()).toEqual('Renders: 1, Time: -Infinity');
-      expect(countSetTimeoutCalls()).toHaveLength(0);
+      expect(setTimeout.mock.calls).toHaveLength(0);
     });
 
     it('does not update when target time and interval are infinite', () => {
@@ -152,7 +152,7 @@ describe('useTimeInterval', () => {
       advanceTime(4000);
 
       expect(getDisplayedText()).toEqual('Renders: 1, Time: -Infinity');
-      expect(countSetTimeoutCalls()).toHaveLength(0);
+      expect(setTimeout.mock.calls).toHaveLength(0);
     });
   });
 });

@@ -1,11 +1,11 @@
 const React = require('react');
-const {render, querySelector} = require('./render');
-const {advanceTime} = require('./helpers');
-const {useIsAfter, useIsBefore} = require('../index');
+const { render, querySelector } = require('./render');
+const { advanceTime } = require('./helpers');
+const { useIsAfter, useIsBefore } = require('../index');
 
 jest.useFakeTimers();
 
-const Component = ({useHook, target, getTime}) => {
+const Component = ({ useHook, target, getTime }) => {
   const after = useHook(target, getTime);
 
   const renderCount = React.useRef(0);
@@ -14,24 +14,28 @@ const Component = ({useHook, target, getTime}) => {
   return React.createElement(
     'div',
     {},
-    'Renders: ' + renderCount.current + ', State: ' + after
+    `Renders: ${renderCount.current}, State: ${after}`
   );
 };
 
 function renderIsAfter(target, getTime) {
-  render(React.createElement(Component, {
-    useHook: useIsAfter,
-    target,
-    getTime,
-  }));
+  render(
+    React.createElement(Component, {
+      useHook: useIsAfter,
+      target,
+      getTime,
+    })
+  );
 }
 
 function renderIsBefore(target, getTime) {
-  render(React.createElement(Component, {
-    useHook: useIsBefore,
-    target,
-    getTime,
-  }));
+  render(
+    React.createElement(Component, {
+      useHook: useIsBefore,
+      target,
+      getTime,
+    })
+  );
 }
 
 function getDisplayedText() {
@@ -63,11 +67,9 @@ describe('useIsAfter', () => {
 
   it('rejects invalid target time', () => {
     jest.spyOn(console, 'error').mockImplementation(() => null);
-    expect(() => renderIsAfter(undefined))
-      .toThrow('invalid target time');
+    expect(() => renderIsAfter(undefined)).toThrow('invalid target time');
 
-    expect(() => renderIsAfter(Number.NaN))
-      .toThrow('invalid target time');
+    expect(() => renderIsAfter(Number.NaN)).toThrow('invalid target time');
   });
 });
 
@@ -96,10 +98,8 @@ describe('useIsBefore', () => {
 
   it('rejects invalid target time', () => {
     jest.spyOn(console, 'error').mockImplementation(() => null);
-    expect(() => renderIsBefore(undefined))
-      .toThrow('invalid target time');
+    expect(() => renderIsBefore(undefined)).toThrow('invalid target time');
 
-    expect(() => renderIsBefore(Number.NaN))
-      .toThrow('invalid target time');
+    expect(() => renderIsBefore(Number.NaN)).toThrow('invalid target time');
   });
 });

@@ -87,7 +87,7 @@ function pickStep(now, anchorTime, interval) {
 }
 
 function useTimeInterval(interval, anchor, getTime, stopAtAnchor) {
-  const anchorTime = (anchor === undefined) ? 0 : anchor;
+  const anchorTime = anchor === undefined ? 0 : anchor;
   const getTimeFn = getTime || Date.now;
 
   if (!interval || interval < 0 || Number.isNaN(interval)) {
@@ -105,7 +105,7 @@ function useTimeInterval(interval, anchor, getTime, stopAtAnchor) {
   const setTime = useState(now)[1];
 
   const step = pickStep(now, anchorTime, interval);
-  const next = (stopAtAnchor && step.next > anchorTime) ? null : step.next;
+  const next = stopAtAnchor && step.next > anchorTime ? null : step.next;
   useCallbackAtTime(setTime, next, getTimeFn);
   return step.now;
 }
@@ -115,11 +115,7 @@ function useCountdown(target, interval, getTime) {
     throw new Error('invalid target time');
   }
   const now = useTimeInterval(interval, target, getTime, true);
-  return (
-    (now >= target) ? -1 :
-      (interval === inf) ? 0 :
-        (target - now - interval)
-  );
+  return now >= target ? -1 : interval === inf ? 0 : target - now - interval;
 }
 
 function useIsAfter(target, getTime) {
@@ -127,7 +123,7 @@ function useIsAfter(target, getTime) {
     throw new Error('invalid target time');
   }
   const now = useTimeInterval(inf, target, getTime, true);
-  return (now >= target);
+  return now >= target;
 }
 
 function useIsBefore(target, getTime) {

@@ -9,7 +9,8 @@
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
-    "test": "jest && eslint --ext mjs,js ."
+    "format": "prettier --write .",
+    "test": "jest && prettier --check ."
   },
   "repository": {
     "type": "git",
@@ -27,11 +28,9 @@
   },
   "homepage": "https://github.com/davidje13/react-hook-countdown#readme",
   "devDependencies": {
-    "eslint": "8.x",
-    "eslint-plugin-jest": "26.x",
-    "eslint-plugin-node": "11.x",
     "jest": "28.x",
     "jest-environment-jsdom": "28.x",
+    "prettier": "2.7.1",
     "react": "18.x",
     "react-dom": "18.x"
   },

@@ -1,16 +1,11 @@
 const React = require('react');
-const {render, querySelector} = require('./render');
-const {
-  advanceTime,
-  focusWindow,
-  customGetNow,
-  countSetTimeoutCalls,
-} = require('./helpers');
+const { render, querySelector } = require('./render');
+const { advanceTime, focusWindow, customGetNow } = require('./helpers');
 const useCountdown = require('../index');
 
 jest.useFakeTimers();
 
-const Component = ({target, interval, getTime}) => {
+const Component = ({ target, interval, getTime }) => {
   const remaining = useCountdown(target, interval, getTime);
 
   const renderCount = React.useRef(0);
@@ -19,7 +14,7 @@ const Component = ({target, interval, getTime}) => {
   return React.createElement(
     'div',
     {},
-    'Renders: ' + renderCount.current + ', Remaining: ' + remaining
+    `Renders: ${renderCount.current}, Remaining: ${remaining}`
   );
 };
 
@@ -95,7 +90,7 @@ describe('useCountdown', () => {
 
     advanceTime(150);
     expect(getDisplayedText()).toEqual('Renders: 1, Remaining: -1');
-    expect(countSetTimeoutCalls()).toHaveLength(0);
+    expect(setTimeout.mock.calls).toHaveLength(0);
   });
 
   it('uses requestAnimationFrame for very short durations', () => {
@@ -160,14 +155,14 @@ describe('useCountdown', () => {
     const startTime = Date.now();
 
     renderCountdown(startTime + 20000, 10000);
-    expect(countSetTimeoutCalls()).toHaveLength(1);
+    expect(setTimeout.mock.calls).toHaveLength(1);
 
     advanceTime(5000);
     renderCountdown(startTime + 20000, 10000);
-    expect(countSetTimeoutCalls()).toHaveLength(1);
+    expect(setTimeout.mock.calls).toHaveLength(1);
 
     renderCountdown(startTime + 20001, 10000);
-    expect(countSetTimeoutCalls()).toHaveLength(2);
+    expect(setTimeout.mock.calls).toHaveLength(2);
   });
 
   describe('when the window regains focus', () => {
@@ -187,12 +182,12 @@ describe('useCountdown', () => {
       const getNow = customGetNow();
 
       renderCountdown(Date.now() + 350, 100, getNow);
-      expect(countSetTimeoutCalls()).toHaveLength(1);
+      expect(setTimeout.mock.calls).toHaveLength(1);
 
       getNow.slip(25);
       focusWindow();
       expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 300');
-      expect(countSetTimeoutCalls()).toHaveLength(2);
+      expect(setTimeout.mock.calls).toHaveLength(2);
 
       advanceTime(24);
       expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 300');
@@ -217,7 +212,7 @@ describe('useCountdown', () => {
     it('invokes a single timeout', () => {
       renderCountdown(Date.now() + 315, Number.POSITIVE_INFINITY);
       advanceTime(10000);
-      expect(countSetTimeoutCalls()).toHaveLength(1);
+      expect(setTimeout.mock.calls).toHaveLength(1);
     });
   });
 
@@ -228,13 +223,13 @@ describe('useCountdown', () => {
 
       advanceTime(1000);
       expect(getDisplayedText()).toEqual('Renders: 1, Remaining: Infinity');
-      expect(countSetTimeoutCalls()).toHaveLength(0);
+      expect(setTimeout.mock.calls).toHaveLength(0);
     });
 
     it('returns 0 for future if the interval is also infinite', () => {
       renderCountdown(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
       expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 0');
-      expect(countSetTimeoutCalls()).toHaveLength(0);
+      expect(setTimeout.mock.calls).toHaveLength(0);
     });
 
     it('returns -1 for past time and does not update', () => {
@@ -243,36 +238,41 @@ describe('useCountdown', () => {
 
       advanceTime(1000);
       expect(getDisplayedText()).toEqual('Renders: 1, Remaining: -1');
-      expect(countSetTimeoutCalls()).toHaveLength(0);
+      expect(setTimeout.mock.calls).toHaveLength(0);
     });
 
     it('returns -1 for past if the interval is also infinite', () => {
       renderCountdown(Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY);
       expect(getDisplayedText()).toEqual('Renders: 1, Remaining: -1');
-      expect(countSetTimeoutCalls()).toHaveLength(0);
+      expect(setTimeout.mock.calls).toHaveLength(0);
     });
   });
 
   describe('invalid configuration', () => {
     it('rejects invalid intervals', () => {
       jest.spyOn(console, 'error').mockImplementation(() => null);
-      expect(() => renderCountdown(Date.now() + 315, -1))
-        .toThrow('invalid interval');
+      expect(() => renderCountdown(Date.now() + 315, -1)).toThrow(
+        'invalid interval'
+      );
 
-      expect(() => renderCountdown(Date.now() + 315, undefined))
-        .toThrow('invalid interval');
+      expect(() => renderCountdown(Date.now() + 315, undefined)).toThrow(
+        'invalid interval'
+      );
 
-      expect(() => renderCountdown(Date.now() + 315, Number.NaN))
-        .toThrow('invalid interval');
+      expect(() => renderCountdown(Date.now() + 315, Number.NaN)).toThrow(
+        'invalid interval'
+      );
     });
 
     it('rejects invalid target time', () => {
       jest.spyOn(console, 'error').mockImplementation(() => null);
-      expect(() => renderCountdown(undefined, 1000))
-        .toThrow('invalid target time');
+      expect(() => renderCountdown(undefined, 1000)).toThrow(
+        'invalid target time'
+      );
 
-      expect(() => renderCountdown(Number.NaN, 1000))
-        .toThrow('invalid target time');
+      expect(() => renderCountdown(Number.NaN, 1000)).toThrow(
+        'invalid target time'
+      );
     });
   });
 });
