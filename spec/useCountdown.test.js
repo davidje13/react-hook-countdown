@@ -1,10 +1,10 @@
 const React = require('react');
 const { render, querySelector } = require('./render');
-const { advanceTime, focusWindow, customGetNow } = require('./helpers');
-const useCountdown = require('../index');
+const { advanceTime, focusWindow, customGetTime } = require('./helpers');
+const { Scheduler, TimeProvider, useCountdown } = require('../index');
 
-const Component = ({ target, interval, getTime }) => {
-  const remaining = useCountdown(target, interval, getTime);
+const Component = ({ target, interval }) => {
+  const remaining = useCountdown(target, interval);
 
   const renderCount = React.useRef(0);
   renderCount.current += 1;
@@ -16,8 +16,14 @@ const Component = ({ target, interval, getTime }) => {
   );
 };
 
-function renderCountdown(target, interval, getTime) {
-  render(React.createElement(Component, { target, interval, getTime }));
+function renderCountdown(target, interval, scheduler) {
+  render(
+    React.createElement(
+      TimeProvider,
+      { scheduler },
+      React.createElement(Component, { target, interval })
+    )
+  );
 }
 
 function getDisplayedText() {
@@ -165,11 +171,11 @@ describe('useCountdown', () => {
 
   describe('when the window regains focus', () => {
     it('checks if the time has slipped', () => {
-      const getNow = customGetNow();
+      const getTime = customGetTime();
 
-      renderCountdown(Date.now() + 315, 100, getNow);
+      renderCountdown(Date.now() + 350, 100, new Scheduler({ getTime }));
 
-      getNow.slip(200);
+      getTime.slip(200);
       expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 300');
 
       focusWindow();
@@ -177,12 +183,12 @@ describe('useCountdown', () => {
     });
 
     it('does not rerender if the countdown has not changed', () => {
-      const getNow = customGetNow();
+      const getTime = customGetTime();
 
-      renderCountdown(Date.now() + 350, 100, getNow);
+      renderCountdown(Date.now() + 350, 100, new Scheduler({ getTime }));
       expect(setTimeout.mock.calls).toHaveLength(1);
 
-      getNow.slip(25);
+      getTime.slip(25);
       focusWindow();
       expect(getDisplayedText()).toEqual('Renders: 1, Remaining: 300');
       expect(setTimeout.mock.calls).toHaveLength(2);

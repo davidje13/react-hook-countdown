@@ -13,7 +13,7 @@ npm install --save react-hook-final-countdown
 
 ## Usage
 
-```javascript
+```jsx
 const useCountdown = require('react-hook-final-countdown');
 
 const MyComponent = ({targetTime}) => {
@@ -28,14 +28,20 @@ const MyComponent = ({targetTime}) => {
 
 ## API
 
-```javascript
-const remaining = useCountdown(targetTime, interval, getTimeFunction);
+```js
+const remaining = useCountdown(targetTime, interval);
+
+const time = useTimeInterval(interval[, anchorTime]);
+
+const after = useIsAfter(time);
+
+const before = useIsBefore(time);
 ```
 
 All times are in milliseconds. All parameters can be changed
 dynamically.
 
-### useCountdown(targetTime, interval[, getTimeFunction])
+### `useCountdown(targetTime, interval)`
 
 Counts down to the given target time.
 
@@ -44,15 +50,6 @@ Counts down to the given target time.
 - `interval`: number of milliseconds between refreshes; this will
   control how often the component is re-rendered, and will be used to
   quantise the returned remaining milliseconds.
-- `getTimeFunction`: a function which takes no arguments and returns
-  the current time in milliseconds since the unix epoch. Defaults to
-  `Date.now`.
-
-  **Note**: `getTimeFunction` should always be a real clock (as it will
-  be used to pick an interval for refreshing), i.e. don't provide a
-  stationary time, as this may result in a hot-loop of refreshes.
-  The primary reason for changing this is to allow a 'server time
-  offset' or similar, not to allow a faster or slower flow of time.
 
 The returned value is -1 after the target time has been reached. Until
 then, it is the remaining number of milliseconds quantised by the
@@ -69,7 +66,7 @@ For example, for an interval of 800ms, returned values may be:
 Positive returned values will always be a multiple of the requested
 interval (to within numeric precision).
 
-### useTimeInterval(interval[, anchorTime[, getTimeFunction]])
+### `useTimeInterval(interval[, anchorTime])`
 
 Provides an infinite timer, updating every `interval` milliseconds.
 
@@ -80,57 +77,124 @@ Provides an infinite timer, updating every `interval` milliseconds.
   will control the "phase" of the clock. For example, setting
   `interval` to 1000 and `anchorTime` to 500 will cause an update
   every second on the half-second boundary. Defaults to 0.
-- `getTimeFunction`: a function which takes no arguments and returns
-  the current time in milliseconds since the unix epoch. Defaults to
-  `Date.now`.
 
 Returns the current timestamp, quantised using `interval`.
 
-### useIsAfter(targetTime[, getTimeFunction])
+### `useIsAfter(targetTime)`
 
 A convenience wrapper around `useCountdown`. Equivalent to:
 
 ```js
-useCountdown(targetTime, Number.POSITIVE_INFINITY, getTimeFunction) < 0
+useCountdown(targetTime, POSITIVE_INFINITY) < 0
 ```
 
-- `targetTime`: the timestamp to count down to (milliseconds since the
+- `targetTime`: the timestamp to wait for (milliseconds since the
   unix epoch).
-- `getTimeFunction`: a function which takes no arguments and returns
-  the current time in milliseconds since the unix epoch. Defaults to
-  `Date.now`.
 
 Returns false until the target time is reached, then true.
 
-### useIsBefore(targetTime[, getTimeFunction])
+### `useIsBefore(targetTime)`
 
 A convenience wrapper around `useCountdown`. Equivalent to:
 
 ```js
-useCountdown(targetTime, Number.POSITIVE_INFINITY, getTimeFunction) >= 0
+useCountdown(targetTime, POSITIVE_INFINITY) >= 0
 ```
 
-- `targetTime`: the timestamp to count down to (milliseconds since the
+- `targetTime`: the timestamp to wait for (milliseconds since the
   unix epoch).
-- `getTimeFunction`: a function which takes no arguments and returns
-  the current time in milliseconds since the unix epoch. Defaults to
-  `Date.now`.
 
 Returns true until the target time is reached, then false.
 
-## Page visibility
+### `<TimeProvider scheduler={scheduler}>`
 
-The countdown will automatically be throttled to a maximum of 2 updates
-per second when the page is not visible. It will also always be updated
-when the window gains focus (as the timers may slip while the window is
-not visible in many browsers).
+An entry point to manipulate the flow of time (e.g. for testing).
+
+```jsx
+const myScheduler = {
+  getTime: () => Date.now(),
+  schedule: (fn, target) => {
+    const tm = setTimeout(fn, target - Date.now());
+    return () => clearTimeout(fn);
+  },
+};
+
+const MyApp = () => (
+  <TimeProvider scheduler={myScheduler}>
+    <MyComponent />
+  </TimeProvider>
+);
+```
+
+By default, a `Scheduler` with default parameters is used. When using
+custom scheduling, it is recommended that you configure or wrap a
+`Scheduler` rather than creating a new implementation from scratch
+(e.g. see the ["half speed" example below](#custom-time-flow-half-speed)).
+
+Note that it is not possible to change the `scheduler` parameter; if
+you need to change the scheduler dynamically, do so within the
+scheduler itself.
+
+### `new Scheduler(options)`
+
+A class which provides scheduling ability, including aggregation of
+multiple scheduled tasks and throttling when the page is not visible.
+
+```jsx
+const myScheduler = new Scheduler({
+  getTime: Date.now,
+  visibleThrottle: 10,
+  hiddenThrottle: 500,
+});
+
+const MyApp = () => (
+  <TimeProvider scheduler={myScheduler}>
+    <MyComponent />
+  </TimeProvider>
+);
+```
+
+- `options`: configuration options for the scheduler:
+  - `getTime`: a function which returns time since an epoch in
+    milliseconds. Defaults to `Date.now`.
+  - `visibleThrottle`: a minimum delay to apply when the page is
+    visible (i.e. the browser tab is selected). Defaults to 10ms.
+  - `hiddenThrottle`: a minimum delay to apply when the page is
+    not visible (i.e. another browser tab is selected).
+    Defaults to 500ms to reduce load on the client CPU.
+    When the page regains focus, all timers will be checked (as
+    the timers may slip while the window is not visible in many
+    browsers)
+
+If you provide a custom `getTime` implementation, note that the
+scheduled tasks will still assume that the time will increment in
+real-time (i.e. its value will increase by 1000 every second). If
+you want to modify the flow of time, you will need to use a wrapper
+around `schedule` (e.g. see the
+["half speed" example below](#custom-time-flow-half-speed)).
+
+This class is designed for use with the `TimeProvider`, but can
+also be used independently:
+
+```js
+const myScheduler = new Scheduler({
+  getTime: Date.now,
+  visibleThrottle: 10,
+  hiddenThrottle: 500,
+});
+
+const now = myScheduler.getTime();
+const cancel = myScheduler.schedule(myFn, now + 5000);
+// in 5 seconds, myFn will be invoked,
+// or call cancel() to cancel the task
+```
 
 ## Examples
 
 ### A countdown to the year 3000
 
-```javascript
-const useCountdown = require('react-hook-final-countdown');
+```jsx
+const {useCountdown} = require('react-hook-final-countdown');
 
 const Y3K = Date.UTC(3000);
 
@@ -146,7 +210,7 @@ const MyComponent = () => {
 
 ### A button which is disabled for a short time when first displayed
 
-```javascript
+```jsx
 const {useIsAfter} = require('react-hook-final-countdown');
 
 const MyDelayedButton = ({onClick}) => {
@@ -159,7 +223,7 @@ const MyDelayedButton = ({onClick}) => {
 
 ### A button which prevents rapid clicking
 
-```javascript
+```jsx
 const {useIsAfter} = require('react-hook-final-countdown');
 
 const MyDelayedButton = ({onClick}) => {
@@ -176,7 +240,7 @@ const MyDelayedButton = ({onClick}) => {
 
 ### A clock
 
-```javascript
+```jsx
 const {useTimeInterval} = require('react-hook-final-countdown');
 
 const MyClock = () => {
@@ -184,4 +248,40 @@ const MyClock = () => {
 
   return (<span>{new Date(time).toString()}</span>);
 };
+```
+
+### Custom time flow (half speed)
+
+```jsx
+const {Scheduler, TimeProvider} = require('react-hook-final-countdown');
+
+const scheduler = new Scheduler();
+const slowMotionScheduler = {
+  getTime: () => scheduler.getTime() * 0.5,
+  schedule: (fn, target) => scheduler.schedule(fn, target * 2),
+};
+
+const MySlowMotionApp = () => (
+  <TimeProvider scheduler={slowMotionScheduler}>
+    <MyComponent />
+  </TimeProvider>
+);
+```
+
+### Custom time flow (static snapshot-in-time)
+
+```jsx
+const {TimeProvider} = require('react-hook-final-countdown');
+
+const time = Date.UTC(2000);
+const frozenScheduler = {
+  getTime: () => time, // fixed time
+  schedule: (fn, target) => () => null, // no-op
+};
+
+const MyFrozenApp = () => (
+  <TimeProvider scheduler={frozenScheduler}>
+    <MyComponent />
+  </TimeProvider>
+);
 ```

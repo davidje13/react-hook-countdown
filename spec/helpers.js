@@ -19,7 +19,7 @@ module.exports = {
     });
   },
 
-  customGetNow() {
+  customGetTime() {
     let timeSlippage = 0;
     const fn = () => Date.now() + timeSlippage;
     fn.slip = (time) => {

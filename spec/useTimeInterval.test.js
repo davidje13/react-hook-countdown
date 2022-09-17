@@ -3,8 +3,8 @@ const { render, querySelector } = require('./render');
 const { advanceTime } = require('./helpers');
 const { useTimeInterval } = require('../index');
 
-const Component = ({ interval, anchor, getTime }) => {
-  const remaining = useTimeInterval(interval, anchor, getTime);
+const Component = ({ interval, anchor }) => {
+  const time = useTimeInterval(interval, anchor);
 
   const renderCount = React.useRef(0);
   renderCount.current += 1;
@@ -12,12 +12,12 @@ const Component = ({ interval, anchor, getTime }) => {
   return React.createElement(
     'div',
     {},
-    `Renders: ${renderCount.current}, Time: ${remaining}`
+    `Renders: ${renderCount.current}, Time: ${time}`
   );
 };
 
-function renderTimeInterval(interval, anchor, getTime) {
-  render(React.createElement(Component, { interval, anchor, getTime }));
+function renderTimeInterval(interval, anchor) {
+  render(React.createElement(Component, { interval, anchor }));
 }
 
 function getDisplayedText() {

@@ -1,84 +1,140 @@
-const { useEffect, useState } = require('react');
+const {
+  createContext,
+  createElement,
+  useContext,
+  useEffect,
+  useState,
+} = require('react');
 
-const inf = Number.POSITIVE_INFINITY;
+const INF = Number.POSITIVE_INFINITY;
+const VOID_TIMEOUT = () => null;
 
-function throttle(delay) {
-  if (global.document && global.document.hidden) {
-    // Page is not visible, so throttle the callback to save user's CPU
-    return Math.max(delay, 500);
+const SCHEDULER_DEFAULT_OPTIONS = {
+  getTime: Date.now,
+  visibleThrottle: 10,
+  hiddenThrottle: 500,
+};
+
+class Scheduler {
+  constructor(options) {
+    options = Object.assign({}, SCHEDULER_DEFAULT_OPTIONS, options);
+    this.getTime = options.getTime;
+    this._visibleThrottle = options.visibleThrottle;
+    this._hiddenThrottle = options.hiddenThrottle;
+    this._tasks = [];
+    this._target = null;
+    this._clearTimeout = null;
+    this._check = this._check.bind(this);
   }
-  return delay;
-}
 
-function setSmallTimeout(fn, focusFn, delay) {
-  const result = {};
-
-  if (delay < 10 && global.requestAnimationFrame) {
-    result.frame = global.requestAnimationFrame(fn);
-  } else {
-    result.timer = setTimeout(fn, delay);
-    if (global.window) {
-      // Timers can be inaccurate when in the background
-      // So check state of the world when we regain focus
-      result.focus = focusFn;
-      global.window.addEventListener('focus', result.focus);
-    }
-  }
-
-  return result;
-}
-
-function clearSmallTimeout(timeout) {
-  if (!timeout) {
-    return;
-  }
-  if (timeout.focus) {
-    global.window.removeEventListener('focus', timeout.focus);
-  }
-  if (timeout.timer) {
-    clearTimeout(timeout.timer);
-  }
-  if (timeout.frame) {
-    global.cancelAnimationFrame(timeout.frame);
-  }
-}
-
-function useCallbackAtTime(fn, target, getTime) {
-  useEffect(() => {
-    if (target === null || Number.isNaN(target)) {
-      return undefined;
-    }
-    let timeout = null;
-    const checkOnFocus = () => {
-      clearSmallTimeout(timeout);
-      const now = getTime();
-      if (now >= target) {
-        timeout = null;
-        fn(now);
-      } else {
-        timeout = setSmallTimeout(
-          () => fn(getTime()),
-          checkOnFocus,
-          throttle(target - now)
-        );
+  _check() {
+    const now = this.getTime();
+    const tasks = this._tasks;
+    let i;
+    for (i = 0; i < tasks.length && now >= tasks[i].target; ++i);
+    for (const task of tasks.splice(0, i)) {
+      try {
+        task.fn(now);
+      } catch (e) {
+        console.error('error in scheduled task', e);
       }
-    };
-    checkOnFocus();
-    return () => clearSmallTimeout(timeout);
-  }, [fn, target, getTime]);
+    }
+    this._update(true);
+  }
+
+  _clear(task) {
+    const i = this._tasks.indexOf(task);
+    if (i !== -1) {
+      this._tasks.splice(i, 1);
+      if (i === 0) {
+        this._update();
+      }
+    }
+  }
+
+  _update(force) {
+    if (this._tasks.length > 0) {
+      const now = this.getTime();
+      const next = this._tasks[0].target;
+      const delay = Math.max(
+        next - now,
+        global.document && global.document.hidden
+          ? this._hiddenThrottle
+          : this._visibleThrottle
+      );
+      if (this._clearTimeout === null) {
+        if (global.window) {
+          // Timers can be inaccurate when in the background
+          // So check state of the world when we regain focus
+          global.window.addEventListener('focus', this._check);
+        }
+      } else {
+        if (!force && next <= this._target && now + delay >= this._target) {
+          return;
+        }
+        this._clearTimeout();
+      }
+      if (delay <= 10 && global.requestAnimationFrame) {
+        const frame = global.requestAnimationFrame(this._check);
+        this._clearTimeout = () => global.cancelAnimationFrame(frame);
+      } else {
+        const timer = setTimeout(this._check, delay);
+        this._clearTimeout = () => clearTimeout(timer);
+      }
+      this._target = now + delay;
+    } else if (this._clearTimeout !== null) {
+      if (global.window) {
+        global.window.removeEventListener('focus', this._check);
+      }
+      this._clearTimeout();
+      this._clearTimeout = null;
+    }
+  }
+
+  schedule(fn, target) {
+    if (typeof target !== 'number' || Number.isNaN(target)) {
+      return VOID_TIMEOUT;
+    }
+    const task = { fn, target };
+    const tasks = this._tasks;
+    const len = tasks.length;
+    if (!len || target < tasks[0].target) {
+      tasks.unshift(task);
+      this._update();
+    } else if (target >= tasks[len - 1].target) {
+      tasks.push(task);
+    } else {
+      // this could be a binary search for a possible performance boost
+      for (let i = 1; i < len; ++i) {
+        if (target < tasks[i].target) {
+          tasks.splice(i, 0, task);
+          break;
+        }
+      }
+    }
+    return () => this._clear(task);
+  }
 }
 
-function quantise(v, step) {
-  return Math.floor(v / step) * step;
-}
+const ROOT_SCHEDULER = new Scheduler();
+const timeContext = createContext(ROOT_SCHEDULER);
+
+const TimeProvider = ({ scheduler, children }) =>
+  createElement(
+    timeContext.Provider,
+    { value: useState(scheduler || ROOT_SCHEDULER)[0] },
+    children
+  );
+
+const quantise = (v, step) => Math.floor(v / step) * step;
 
 function pickStep(now, anchorTime, interval) {
   if (!Number.isFinite(anchorTime)) {
-    return { now: -inf, next: null };
+    return { now: -INF, next: null };
   }
-  if (interval === inf) {
+  if (interval === INF) {
     if (now < anchorTime) {
-      return { now: -inf, next: anchorTime };
+      return { now: -INF, next: anchorTime };
     }
     return { now: anchorTime, next: null };
   }
@@ -86,55 +142,43 @@ function pickStep(now, anchorTime, interval) {
   return { now: quantisedNow, next: quantisedNow + interval };
 }
 
-function useTimeInterval(interval, anchor, getTime, stopAtAnchor) {
-  const anchorTime = anchor === undefined ? 0 : anchor;
-  const getTimeFn = getTime || Date.now;
-
-  if (!interval || interval < 0 || Number.isNaN(interval)) {
+function useTimeInterval(interval, anchor, stopAtAnchor) {
+  if (anchor === undefined && !stopAtAnchor) {
+    anchor = 0;
+  }
+  if (typeof interval !== 'number' || Number.isNaN(interval) || interval <= 0) {
     throw new Error('invalid interval');
   }
-  if (Number.isNaN(anchorTime)) {
+  if (typeof anchor !== 'number' || Number.isNaN(anchor)) {
     throw new Error('invalid target time');
   }
 
-  /* This is not pure; technically should be:
-   *  const timeState = useState(getTimeFn);
-   *  const now = timeState[0];
-   * but that causes temporary incorrect output when target changes */
-  const now = getTimeFn();
-  const setTime = useState(now)[1];
+  const scheduler = useContext(timeContext);
+  const [, setNow] = useState(scheduler.getTime);
 
-  const step = pickStep(now, anchorTime, interval);
-  const next = stopAtAnchor && step.next > anchorTime ? null : step.next;
-  useCallbackAtTime(setTime, next, getTimeFn);
-  return step.now;
+  /* This is not pure; technically should all be in useEffect,
+   * but that causes temporary incorrect output when parameters change */
+  const { now, next } = pickStep(scheduler.getTime(), anchor, interval);
+  const target = stopAtAnchor && next > anchor ? null : next;
+  useEffect(() => scheduler.schedule(setNow, target), [scheduler, target]);
+  return now;
 }
 
-function useCountdown(target, interval, getTime) {
-  if (typeof target !== 'number') {
-    throw new Error('invalid target time');
-  }
-  const now = useTimeInterval(interval, target, getTime, true);
-  return now >= target ? -1 : interval === inf ? 0 : target - now - interval;
-}
-
-function useIsAfter(target, getTime) {
-  if (typeof target !== 'number') {
-    throw new Error('invalid target time');
-  }
-  const now = useTimeInterval(inf, target, getTime, true);
-  return now >= target;
-}
-
-function useIsBefore(target, getTime) {
-  return !useIsAfter(target, getTime);
-}
+const useCountdown = (target, interval) => {
+  const now = useTimeInterval(interval, target, true);
+  return now >= target ? -1 : interval === INF ? 0 : target - now - interval;
+};
+const useIsAfter = (target) => useTimeInterval(INF, target, true) >= target;
+const useIsBefore = (target) => !useIsAfter(target);
 
 Object.defineProperty(exports, '__esModule', { value: true });
 exports.default = useCountdown;
 exports.useTimeInterval = useTimeInterval;
+exports.useCountdown = useCountdown;
 exports.useIsAfter = useIsAfter;
 exports.useIsBefore = useIsBefore;
+exports.Scheduler = Scheduler;
+exports.TimeProvider = TimeProvider;
 
 module.exports = Object.assign(exports.default, exports);
 exports.default.default = module.exports;

@@ -3,8 +3,8 @@ const { render, querySelector } = require('./render');
 const { advanceTime } = require('./helpers');
 const { useIsAfter, useIsBefore } = require('../index');
 
-const Component = ({ useHook, target, getTime }) => {
-  const after = useHook(target, getTime);
+const Component = ({ useHook, target }) => {
+  const after = useHook(target);
 
   const renderCount = React.useRef(0);
   renderCount.current += 1;
@@ -16,24 +16,12 @@ const Component = ({ useHook, target, getTime }) => {
   );
 };
 
-function renderIsAfter(target, getTime) {
-  render(
-    React.createElement(Component, {
-      useHook: useIsAfter,
-      target,
-      getTime,
-    })
-  );
+function renderIsAfter(target) {
+  render(React.createElement(Component, { useHook: useIsAfter, target }));
 }
 
-function renderIsBefore(target, getTime) {
-  render(
-    React.createElement(Component, {
-      useHook: useIsBefore,
-      target,
-      getTime,
-    })
-  );
+function renderIsBefore(target) {
+  render(React.createElement(Component, { useHook: useIsBefore, target }));
 }
 
 function getDisplayedText() {
